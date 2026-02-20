@@ -526,7 +526,7 @@ const WorldCupTicketSimulator = () => {
                         return (
                           <tr key={key} className={`border-b border-amber-100 ${isFinalsGroup ? 'bg-green-50' : ''}`}>
                             <td className="py-2 px-2 font-medium">{OUTCOME_LABELS[key]}</td>
-                            <td className="py-2 px-2">
+                            <td className="py-2 px-2 text-right">
                               <input
                                 type="number"
                                 step={oddsFormat === 'decimal' ? '0.01' : '10'}
@@ -540,11 +540,11 @@ const WorldCupTicketSimulator = () => {
                             <td className="py-2 px-2 text-right font-semibold text-amber-700">
                               {isHedgeable ? (stageOdds[key].adjustedOdds === Infinity ? '-' : stageOdds[key].adjustedOdds.toFixed(2)) : '-'}
                             </td>
-                            <td className="py-2 px-2">
+                            <td className="py-2 px-2 text-right">
                               {isHedgeable ? (
                                 <input type="number" step="100" value={hedgeStakes[key]} onChange={(e) => updateHedgeStake(key, e.target.value)} className="w-24 px-2 py-1 border border-gray-300 rounded text-right focus:ring-2 focus:ring-amber-500 focus:border-transparent" />
                               ) : (
-                                <span className="text-gray-400 text-right block">-</span>
+                                <span className="text-gray-400">-</span>
                               )}
                             </td>
                             <td className="py-2 px-2 text-right font-semibold text-green-600">
