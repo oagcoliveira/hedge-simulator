@@ -330,8 +330,9 @@ const WorldCupTicketSimulator = () => {
 
   const updateOdds = (key, displayValue) => {
     const val = Number(displayValue);
+    if (isNaN(val)) return;
     const decOdds = oddsFormat === 'american' ? americanToDecimal(val) : val;
-    if (decOdds > 0) setBettingOdds(prev => ({ ...prev, [key]: decOdds }));
+    setBettingOdds(prev => ({ ...prev, [key]: decOdds }));
   };
   const getDisplayOdds = (key) => {
     const dec = bettingOdds[key];
@@ -375,10 +376,22 @@ const WorldCupTicketSimulator = () => {
 
           {/* Investor Stake Input */}
           <div className="bg-indigo-50 rounded-lg p-6 mb-8 border-2 border-indigo-200">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Investor Stake (%)</label>
-              <input type="number" step="0.01" min="0" max="100" value={investorStakePercent} onChange={(e) => setInvestorStakePercent(Math.min(Math.max(Number(e.target.value), 0), 100))} className="w-32 px-4 py-2 border border-indigo-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" />
-              <p className="text-sm text-gray-600 mt-2">Your proportional share of the investment strategy results</p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Investor Stake (%)</label>
+                <input type="number" step="0.01" min="0" max="100" value={investorStakePercent} onChange={(e) => setInvestorStakePercent(Math.min(Math.max(Number(e.target.value), 0), 100))} className="w-32 px-4 py-2 border border-indigo-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" />
+                <p className="text-sm text-gray-600 mt-2">Your proportional share</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Initial Investment</label>
+                <div className="text-2xl font-bold text-indigo-600">{formatCurrency(totalPurchase * (investorStakePercent / 100))}</div>
+                <p className="text-sm text-gray-600 mt-2">Stake % × Ticket Cost</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Maximum Investment</label>
+                <div className="text-2xl font-bold text-indigo-600">{formatCurrency((totalPurchase + (hedgeEnabled ? STAGES.reduce((sum, s) => sum + hedgeStakes[s], 0) : 0)) * (investorStakePercent / 100))}</div>
+                <p className="text-sm text-gray-600 mt-2">Stake % × (Tickets + Hedges)</p>
+              </div>
             </div>
           </div>
 
