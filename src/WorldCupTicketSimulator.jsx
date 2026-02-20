@@ -331,7 +331,7 @@ const WorldCupTicketSimulator = () => {
   const updateOdds = (key, displayValue) => {
     const val = Number(displayValue);
     const decOdds = oddsFormat === 'american' ? americanToDecimal(val) : val;
-    if (decOdds > 1) setBettingOdds(prev => ({ ...prev, [key]: decOdds }));
+    if (decOdds > 0) setBettingOdds(prev => ({ ...prev, [key]: decOdds }));
   };
   const getDisplayOdds = (key) => {
     const dec = bettingOdds[key];
@@ -351,12 +351,14 @@ const WorldCupTicketSimulator = () => {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
             <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg p-6 text-white">
               <div className="text-sm opacity-90 mb-1">Expected Value</div>
-              <div className="text-3xl font-bold">{formatCurrency(expectedValue * (investorStakePercent / 100))}</div>
+              <div className="text-2xl font-bold">{formatCurrency(expectedValue)}</div>
+              <div className="text-sm mt-2 opacity-75 text-blue-100">{formatCurrency(expectedValue * (investorStakePercent / 100))} @ {investorStakePercent.toFixed(2)}%</div>
               <div className="text-sm mt-2 opacity-90">IRR: {formatPercent(expectedROI)}</div>
             </div>
             <div className={`${finalsScenario.netPL >= 0 ? 'bg-gradient-to-br from-green-500 to-green-600' : 'bg-gradient-to-br from-red-500 to-red-600'} rounded-lg p-6 text-white`}>
               <div className="text-sm opacity-90 mb-1">Finals ({probFinals.toFixed(1)}%)</div>
-              <div className="text-3xl font-bold">{formatCurrency(finalsScenario.netPL * (investorStakePercent / 100))}</div>
+              <div className="text-2xl font-bold">{formatCurrency(finalsScenario.netPL)}</div>
+              <div className="text-sm mt-2 opacity-75 text-blue-100">{formatCurrency(finalsScenario.netPL * (investorStakePercent / 100))} @ {investorStakePercent.toFixed(2)}%</div>
               <div className="text-sm mt-2 opacity-90">IRR: {formatPercent(finalsScenario.roi)}</div>
             </div>
             <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg p-6 text-white">
@@ -366,8 +368,8 @@ const WorldCupTicketSimulator = () => {
             </div>
             <div className="bg-gradient-to-br from-gray-600 to-gray-700 rounded-lg p-6 text-white">
               <div className="text-sm opacity-90 mb-1">Risk Range</div>
-              <div className="text-lg font-bold">{formatCurrency(maxLoss * (investorStakePercent / 100))}</div>
-              <div className="text-lg font-bold">to {formatCurrency(maxGain * (investorStakePercent / 100))}</div>
+              <div className="text-2xl font-bold">{formatCurrency(maxLoss)} to {formatCurrency(maxGain)}</div>
+              <div className="text-sm mt-2 opacity-75 text-blue-100">{formatCurrency(maxLoss * (investorStakePercent / 100))} to {formatCurrency(maxGain * (investorStakePercent / 100))} @ {investorStakePercent.toFixed(2)}%</div>
             </div>
           </div>
 
