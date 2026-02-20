@@ -61,6 +61,9 @@ const WorldCupTicketSimulator = () => {
   const [oddsFormat, setOddsFormat] = useState(saved.oddsFormat);
   const [hedgeStakes, setHedgeStakes] = useState(saved.hedgeStakes);
 
+  // Investor Stake
+  const [investorStakePercent, setInvestorStakePercent] = useState(100);
+
   // Persist all inputs to localStorage on change
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
@@ -348,12 +351,12 @@ const WorldCupTicketSimulator = () => {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
             <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg p-6 text-white">
               <div className="text-sm opacity-90 mb-1">Expected Value</div>
-              <div className="text-3xl font-bold">{formatCurrency(expectedValue)}</div>
+              <div className="text-3xl font-bold">{formatCurrency(expectedValue * (investorStakePercent / 100))}</div>
               <div className="text-sm mt-2 opacity-90">IRR: {formatPercent(expectedROI)}</div>
             </div>
             <div className={`${finalsScenario.netPL >= 0 ? 'bg-gradient-to-br from-green-500 to-green-600' : 'bg-gradient-to-br from-red-500 to-red-600'} rounded-lg p-6 text-white`}>
               <div className="text-sm opacity-90 mb-1">Finals ({probFinals.toFixed(1)}%)</div>
-              <div className="text-3xl font-bold">{formatCurrency(finalsScenario.netPL)}</div>
+              <div className="text-3xl font-bold">{formatCurrency(finalsScenario.netPL * (investorStakePercent / 100))}</div>
               <div className="text-sm mt-2 opacity-90">IRR: {formatPercent(finalsScenario.roi)}</div>
             </div>
             <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg p-6 text-white">
@@ -363,86 +366,17 @@ const WorldCupTicketSimulator = () => {
             </div>
             <div className="bg-gradient-to-br from-gray-600 to-gray-700 rounded-lg p-6 text-white">
               <div className="text-sm opacity-90 mb-1">Risk Range</div>
-              <div className="text-lg font-bold">{formatCurrency(maxLoss)}</div>
-              <div className="text-lg font-bold">to {formatCurrency(maxGain)}</div>
+              <div className="text-lg font-bold">{formatCurrency(maxLoss * (investorStakePercent / 100))}</div>
+              <div className="text-lg font-bold">to {formatCurrency(maxGain * (investorStakePercent / 100))}</div>
             </div>
           </div>
 
-          {/* Input Sections */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-            {/* Purchase Variables */}
-            <div className="bg-gray-50 rounded-lg p-6">
-              <h3 className="text-xl font-bold text-gray-800 mb-4">Ticket Purchase</h3>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Purchase Price per Ticket</label>
-                  <input type="number" value={pricePerTicket} onChange={(e) => setPricePerTicket(Number(e.target.value))} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Number of Tickets</label>
-                  <input type="number" value={numTickets} onChange={(e) => setNumTickets(Number(e.target.value))} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" />
-                </div>
-                <div className="pt-2 border-t border-gray-300">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm font-medium text-gray-700">Total Upfront Cost:</span>
-                    <span className="text-xl font-bold text-indigo-600">{formatCurrency(totalPurchase)}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Transaction Costs */}
-            <div className="bg-gray-50 rounded-lg p-6">
-              <h3 className="text-xl font-bold text-gray-800 mb-4">Transaction Costs</h3>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">FIFA Resale Fee (%)</label>
-                  <input type="number" step="0.1" value={resaleFeePercent} onChange={(e) => setResaleFeePercent(Number(e.target.value))} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Payment Processing Fee (%)</label>
-                  <input type="number" step="0.1" value={processingFeePercent} onChange={(e) => setProcessingFeePercent(Number(e.target.value))} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Fixed Transaction Cost ($)</label>
-                  <input type="number" value={fixedTransactionCost} onChange={(e) => setFixedTransactionCost(Number(e.target.value))} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" />
-                </div>
-              </div>
-            </div>
-
-            {/* Carrying Cost */}
-            <div className="bg-gray-50 rounded-lg p-6">
-              <h3 className="text-xl font-bold text-gray-800 mb-4">Carrying / Opportunity Cost</h3>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Annual Opportunity Cost Rate (%)</label>
-                  <input type="number" step="0.1" value={annualOpportunityCost} onChange={(e) => setAnnualOpportunityCost(Number(e.target.value))} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Proceeds Month</label>
-                  <div className="w-full px-4 py-2 bg-gray-100 border border-gray-300 rounded-lg text-gray-700">{proceedsMonth}</div>
-                </div>
-                <div className="pt-2 border-t border-gray-300">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm font-medium text-gray-700">Total Carrying Cost:</span>
-                    <span className="text-xl font-bold text-orange-600">{formatCurrency(carryingCost)}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Selling Prices */}
-            <div className="bg-gray-50 rounded-lg p-6">
-              <h3 className="text-xl font-bold text-gray-800 mb-4">Resale Price Assumptions</h3>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Expected Resale per Ticket (if Finals)</label>
-                  <input type="number" value={expectedResale} onChange={(e) => setExpectedResale(Number(e.target.value))} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" />
-                </div>
-                <div className="pt-2 border-t border-gray-300 text-sm text-gray-500">
-                  If Brazil is eliminated at any stage: full reimbursement at {formatCurrency(pricePerTicket)}/ticket (no fees).
-                </div>
-              </div>
+          {/* Investor Stake Input */}
+          <div className="bg-indigo-50 rounded-lg p-6 mb-8 border-2 border-indigo-200">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Investor Stake (%)</label>
+              <input type="number" step="0.01" min="0" max="100" value={investorStakePercent} onChange={(e) => setInvestorStakePercent(Math.min(Math.max(Number(e.target.value), 0), 100))} className="w-32 px-4 py-2 border border-indigo-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" />
+              <p className="text-sm text-gray-600 mt-2">Your proportional share of the investment strategy results</p>
             </div>
           </div>
 
@@ -516,7 +450,7 @@ const WorldCupTicketSimulator = () => {
                             <td className="py-2 px-2">
                               <input
                                 type="number"
-                                step={oddsFormat === 'decimal' ? '0.01' : '10'}
+                                step={oddsFormat === 'decimal' ? '0.01' : '1'}
                                 value={getDisplayOdds(key)}
                                 onChange={(e) => updateOdds(key, e.target.value)}
                                 className="w-24 px-2 py-1 border border-gray-300 rounded text-right focus:ring-2 focus:ring-amber-500 focus:border-transparent"
@@ -528,7 +462,7 @@ const WorldCupTicketSimulator = () => {
                             </td>
                             <td className="py-2 px-2">
                               {isHedgeable ? (
-                                <input type="number" step="100" value={hedgeStakes[key]} onChange={(e) => updateHedgeStake(key, e.target.value)} className="w-24 px-2 py-1 border border-gray-300 rounded text-right focus:ring-2 focus:ring-amber-500 focus:border-transparent" />
+                                <input type="number" step={key === 'Group' || key === 'R32' ? '10' : '100'} value={hedgeStakes[key]} onChange={(e) => updateHedgeStake(key, e.target.value)} className="w-24 px-2 py-1 border border-gray-300 rounded text-right focus:ring-2 focus:ring-amber-500 focus:border-transparent" />
                               ) : (
                                 <span className="text-gray-400 text-right block">-</span>
                               )}
@@ -630,20 +564,82 @@ const WorldCupTicketSimulator = () => {
             </ResponsiveContainer>
           </div>
 
-          {/* Payoff Diagram */}
-          <div className="bg-white rounded-lg p-6 border border-gray-200">
-            <h3 className="text-xl font-bold text-gray-800 mb-4">Payoff Diagram</h3>
-            <ResponsiveContainer width="100%" height={400}>
-              <AreaChart data={sensitivityData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="price" label={{ value: 'Resale Price per Ticket ($)', position: 'insideBottom', offset: -5 }} tickFormatter={(v) => `$${v/1000}k`} />
-                <YAxis label={{ value: 'Net P&L ($)', angle: -90, position: 'insideLeft' }} tickFormatter={(v) => `$${v/1000}k`} />
-                <Tooltip formatter={(v) => formatCurrency(v)} labelFormatter={(v) => `Price: ${formatCurrency(v)}`} />
-                <Legend />
-                <Area type="monotone" dataKey="finals" stroke="#10b981" fill="#86efac" fillOpacity={0.3} name="Finals P&L" />
-                <Area type="monotone" dataKey="expectedValue" stroke="#6366f1" fill="#c4b5fd" fillOpacity={0.3} name="Expected Value" />
-              </AreaChart>
-            </ResponsiveContainer>
+          {/* Input Sections - Moved to Bottom */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            {/* Purchase Variables */}
+            <div className="bg-gray-50 rounded-lg p-6">
+              <h3 className="text-xl font-bold text-gray-800 mb-4">Ticket Purchase</h3>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Purchase Price per Ticket</label>
+                  <input type="number" value={pricePerTicket} onChange={(e) => setPricePerTicket(Number(e.target.value))} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Number of Tickets</label>
+                  <input type="number" value={numTickets} onChange={(e) => setNumTickets(Number(e.target.value))} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" />
+                </div>
+                <div className="pt-2 border-t border-gray-300">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium text-gray-700">Total Upfront Cost:</span>
+                    <span className="text-xl font-bold text-indigo-600">{formatCurrency(totalPurchase)}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Transaction Costs */}
+            <div className="bg-gray-50 rounded-lg p-6">
+              <h3 className="text-xl font-bold text-gray-800 mb-4">Transaction Costs</h3>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">FIFA Resale Fee (%)</label>
+                  <input type="number" step="0.1" value={resaleFeePercent} onChange={(e) => setResaleFeePercent(Number(e.target.value))} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Payment Processing Fee (%)</label>
+                  <input type="number" step="0.1" value={processingFeePercent} onChange={(e) => setProcessingFeePercent(Number(e.target.value))} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Fixed Transaction Cost ($)</label>
+                  <input type="number" value={fixedTransactionCost} onChange={(e) => setFixedTransactionCost(Number(e.target.value))} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" />
+                </div>
+              </div>
+            </div>
+
+            {/* Carrying Cost */}
+            <div className="bg-gray-50 rounded-lg p-6">
+              <h3 className="text-xl font-bold text-gray-800 mb-4">Carrying / Opportunity Cost</h3>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Annual Opportunity Cost Rate (%)</label>
+                  <input type="number" step="0.1" value={annualOpportunityCost} onChange={(e) => setAnnualOpportunityCost(Number(e.target.value))} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Proceeds Month</label>
+                  <div className="w-full px-4 py-2 bg-gray-100 border border-gray-300 rounded-lg text-gray-700">{proceedsMonth}</div>
+                </div>
+                <div className="pt-2 border-t border-gray-300">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium text-gray-700">Total Carrying Cost:</span>
+                    <span className="text-xl font-bold text-orange-600">{formatCurrency(carryingCost)}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Selling Prices */}
+            <div className="bg-gray-50 rounded-lg p-6">
+              <h3 className="text-xl font-bold text-gray-800 mb-4">Resale Price Assumptions</h3>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Expected Resale per Ticket (if Finals)</label>
+                  <input type="number" value={expectedResale} onChange={(e) => setExpectedResale(Number(e.target.value))} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" />
+                </div>
+                <div className="pt-2 border-t border-gray-300 text-sm text-gray-500">
+                  If Brazil is eliminated at any stage: full reimbursement at {formatCurrency(pricePerTicket)}/ticket (no fees).
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
