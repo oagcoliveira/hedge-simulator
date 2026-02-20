@@ -325,12 +325,25 @@ const WorldCupTicketSimulator = () => {
   const formatCurrency = (value) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(value);
   const formatPercent = (value) => `${value.toFixed(2)}%`;
 
+  const [editingOdds, setEditingOdds] = useState({});
   const updateOdds = (key, displayValue) => {
-    const val = Number(displayValue);
-    const decOdds = oddsFormat === 'american' ? americanToDecimal(val) : val;
-    if (decOdds > 1) setBettingOdds(prev => ({ ...prev, [key]: decOdds }));
+    if (oddsFormat === 'american') {
+      setEditingOdds(prev => ({ ...prev, [key]: displayValue }));
+      const val = Number(displayValue);
+      if (val >= 100 || val <= -100) {
+        const decOdds = americanToDecimal(val);
+        if (decOdds > 1) setBettingOdds(prev => ({ ...prev, [key]: decOdds }));
+      }
+    } else {
+      const val = Number(displayValue);
+      if (val > 1) setBettingOdds(prev => ({ ...prev, [key]: val }));
+    }
+  };
+  const commitOdds = (key) => {
+    setEditingOdds(prev => { const next = { ...prev }; delete next[key]; return next; });
   };
   const getDisplayOdds = (key) => {
+    if (oddsFormat === 'american' && key in editingOdds) return editingOdds[key];
     const dec = bettingOdds[key];
     if (oddsFormat === 'american') return decimalToAmerican(dec);
     return dec;
@@ -469,11 +482,11 @@ const WorldCupTicketSimulator = () => {
                     <label className="block text-sm font-medium text-gray-700 mb-2">Odds Format</label>
                     <div className="flex rounded-lg overflow-hidden border border-gray-300">
                       <button
-                        onClick={() => setOddsFormat('decimal')}
+                        onClick={() => { setOddsFormat('decimal'); setEditingOdds({}); }}
                         className={`flex-1 px-3 py-2 text-sm font-medium ${oddsFormat === 'decimal' ? 'bg-amber-500 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'}`}
                       >Decimal</button>
                       <button
-                        onClick={() => setOddsFormat('american')}
+                        onClick={() => { setOddsFormat('american'); setEditingOdds({}); }}
                         className={`flex-1 px-3 py-2 text-sm font-medium ${oddsFormat === 'american' ? 'bg-amber-500 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'}`}
                       >American</button>
                     </div>
@@ -519,6 +532,7 @@ const WorldCupTicketSimulator = () => {
                                 step={oddsFormat === 'decimal' ? '0.01' : '10'}
                                 value={getDisplayOdds(key)}
                                 onChange={(e) => updateOdds(key, e.target.value)}
+                                onBlur={() => commitOdds(key)}
                                 className="w-24 px-2 py-1 border border-gray-300 rounded text-right focus:ring-2 focus:ring-amber-500 focus:border-transparent"
                               />
                             </td>
