@@ -10,6 +10,9 @@
     "preview": "vite preview",
     "start": "vite preview --host --port ${PORT:-4173}"
   },
+  "engines": {
+    "node": ">=22.12.0"
+  },
   "dependencies": {
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
