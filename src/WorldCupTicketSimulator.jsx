@@ -283,6 +283,38 @@ const WorldCupTicketSimulator = () => {
   const maxLoss = Math.min(...scenarios.map(s => s.netPL));
   const maxGain = Math.max(...scenarios.map(s => s.netPL));
 
+  // Perfect hedge: solve for G such that all 6 scenarios have equal P&L
+  // Recursion: s_i = (G + CC + S_{i-1}) / (o_i - 1), where S_{i-1} = sum of prior stakes
+  // S_5 is linear in G → solve Finals equation analytically
+  const perfectHedgeData = useMemo(() => {
+    const runRecursion = (G) => {
+      let cumStakes = 0;
+      const stakes = {};
+      for (const stage of STAGES) {
+        const o = stageOdds[stage].adjustedOdds;
+        if (!isFinite(o) || o <= 1) return null;
+        const s = (G + carryingCost + cumStakes) / (o - 1);
+        stakes[stage] = s;
+        cumStakes += s;
+      }
+      return { stakes, totalStakes: cumStakes };
+    };
+    const r0 = runRecursion(0);
+    const r1 = runRecursion(1);
+    if (!r0 || !r1) return null;
+    const b = r0.totalStakes;
+    const a = r1.totalStakes - b;
+    const grossResale = expectedResale * numTickets;
+    const netResale = grossResale * (1 - resaleFeePercent / 100 - processingFeePercent / 100) - fixedTransactionCost;
+    const G = (netResale - totalPurchase - carryingCost - b) / (1 + a);
+    const final = runRecursion(G);
+    if (!final) return null;
+    const roundedStakes = {};
+    for (const stage of STAGES) roundedStakes[stage] = Math.max(0, Math.round(final.stakes[stage]));
+    return { G, stakes: roundedStakes };
+  }, [stageOdds, carryingCost, expectedResale, numTickets, resaleFeePercent, processingFeePercent,
+      fixedTransactionCost, totalPurchase]);
+
   const formatCurrency = (value) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(value);
   const formatPercent = (value) => `${value.toFixed(2)}%`;
 
@@ -430,6 +462,22 @@ const WorldCupTicketSimulator = () => {
                     </tr>
                   </tfoot>
                 </table>
+              </div>
+
+              {/* Perfect Hedge */}
+              <div className="flex items-center gap-4 pt-4 border-t border-amber-200">
+                <button
+                  onClick={() => perfectHedgeData && setHedgeStakes(perfectHedgeData.stakes)}
+                  disabled={!perfectHedgeData}
+                  className="px-4 py-2 bg-amber-500 text-white rounded-lg font-semibold hover:bg-amber-600 disabled:opacity-40 transition-colors"
+                >
+                  Perfect Hedge
+                </button>
+                {perfectHedgeData && (
+                  <span className="text-sm text-gray-600">
+                    Locks in <span className={`font-bold ${perfectHedgeData.G >= 0 ? 'text-green-600' : 'text-red-600'}`}>{formatCurrency(perfectHedgeData.G)}</span> across all outcomes
+                  </span>
+                )}
               </div>
             </div>
           </div>
