@@ -7,8 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview",
-    "start": "vite preview --host --port ${PORT:-4173}"
+    "preview": "vite preview"
   },
   "engines": {
     "node": ">=22.12.0"
