@@ -27,7 +27,6 @@ const DEFAULTS = {
   oddsFormat: 'decimal',
   hedgeStakes: { Group: 25, R32: 300, R16: 500, QF: 1200, SF: 3100 },
   lockedStages: {},
-  lockedOdds: {},
 };
 
 const loadState = () => {
@@ -51,24 +50,27 @@ const WorldCupTicketSimulator = () => {
   const [oddsFormat, setOddsFormat] = useState(saved.oddsFormat);
   const [hedgeStakes, setHedgeStakes] = useState(saved.hedgeStakes);
   const [lockedStages, setLockedStages] = useState(saved.lockedStages);
-  const [lockedOdds, setLockedOdds] = useState(saved.lockedOdds);
   const [inputsExpanded, setInputsExpanded] = useState(false);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
       pricePerTicket, numTickets, resaleFeePercent, processingFeePercent, fixedTransactionCost,
-      annualOpportunityCost, expectedResale, bettingOdds, oddsFormat, hedgeStakes, lockedStages, lockedOdds,
+      annualOpportunityCost, expectedResale, bettingOdds, oddsFormat, hedgeStakes, lockedStages,
     }));
   }, [pricePerTicket, numTickets, resaleFeePercent, processingFeePercent, fixedTransactionCost,
-      annualOpportunityCost, expectedResale, bettingOdds, oddsFormat, hedgeStakes, lockedStages, lockedOdds]);
+      annualOpportunityCost, expectedResale, bettingOdds, oddsFormat, hedgeStakes, lockedStages]);
 
   const hedgeMonths = { Group: 4, R32: 4, R16: 4, QF: 5, SF: 5 };
   const proceedsMonth = 5.5;
 
+  // Locked stages are resolved facts (the team already survived past them), so their
+  // odds/probability are dropped entirely and the remaining outcomes are renormalized
+  // to 100%, conditioned on having survived to the present point in the tournament.
   const oddsData = useMemo(() => {
     const impliedProbs = {};
     let totalImplied = 0;
     for (const key of ALL_OUTCOMES) {
+      if (lockedStages[key]) { impliedProbs[key] = 0; continue; }
       const ip = bettingOdds[key] > 0 ? (1 / bettingOdds[key]) * 100 : 0;
       impliedProbs[key] = ip;
       totalImplied += ip;
@@ -76,10 +78,10 @@ const WorldCupTicketSimulator = () => {
     const margin = totalImplied - 100;
     const fairProbs = {};
     for (const key of ALL_OUTCOMES) {
-      fairProbs[key] = totalImplied > 0 ? (impliedProbs[key] / totalImplied) * 100 : 0;
+      fairProbs[key] = (!lockedStages[key] && totalImplied > 0) ? (impliedProbs[key] / totalImplied) * 100 : 0;
     }
     return { impliedProbs, totalImplied, margin, fairProbs };
-  }, [bettingOdds]);
+  }, [bettingOdds, lockedStages]);
 
   const elimProbs = useMemo(() => {
     const ep = {};
@@ -133,12 +135,14 @@ const WorldCupTicketSimulator = () => {
 
     for (let i = 0; i < STAGES.length; i++) {
       const elimStage = STAGES[i];
+      if (lockedStages[elimStage]) continue; // resolved fact, not a live scenario; its stake is a sunk cost folded into later scenarios via lostStakes/placedStages below
+
       const placedStages = STAGES.slice(0, i + 1);
       const totalStakePlaced = placedStages.reduce((sum, s) => sum + hedgeStakes[s], 0);
       const hCarryCost = hedgeCarryCostPerStage(placedStages);
 
       const winningStake = hedgeStakes[elimStage];
-      const winningOdds = lockedStages[elimStage] ? lockedOdds[elimStage] : stageOdds[elimStage].adjustedOdds;
+      const winningOdds = stageOdds[elimStage].adjustedOdds;
       const hedgeReturn = winningStake * winningOdds;
       const lostStakes = STAGES.slice(0, i).reduce((sum, s) => sum + hedgeStakes[s], 0);
       const hedgeResult = winningStake * (winningOdds - 1) - lostStakes;
@@ -221,7 +225,7 @@ const WorldCupTicketSimulator = () => {
     });
 
     return results;
-  }, [elimProbs, hedgeStakes, stageOdds, lockedStages, lockedOdds, pricePerTicket, numTickets, expectedResale,
+  }, [elimProbs, hedgeStakes, stageOdds, lockedStages, pricePerTicket, numTickets, expectedResale,
       resaleFeePercent, processingFeePercent, fixedTransactionCost, totalPurchase, carryingCost,
       annualOpportunityCost, probFinals]);
 
@@ -236,7 +240,7 @@ const WorldCupTicketSimulator = () => {
         weightedEndInflow += p * s.netProceeds;
       } else {
         const winStake = hedgeStakes[s.stage];
-        const winOdds = lockedStages[s.stage] ? lockedOdds[s.stage] : (stageOdds[s.stage]?.adjustedOdds || 0);
+        const winOdds = stageOdds[s.stage]?.adjustedOdds || 0;
         weightedEndInflow += p * (s.grossProceeds + winStake * winOdds);
       }
       for (const st of s.placedStages) {
@@ -252,7 +256,7 @@ const WorldCupTicketSimulator = () => {
       cashFlows.push({ month: Number(m), amount: -amt });
     }
     return calculateIRR(cashFlows);
-  }, [scenarios, totalPurchase, hedgeStakes, stageOdds, lockedStages, lockedOdds]);
+  }, [scenarios, totalPurchase, hedgeStakes, stageOdds]);
 
   const finalsScenario = scenarios.find(s => s.isFinals);
 
@@ -355,13 +359,14 @@ const WorldCupTicketSimulator = () => {
   };
   const updateHedgeStake = (stage, value) => setHedgeStakes(prev => ({ ...prev, [stage]: Number(value) }));
   const toggleLock = (stage) => {
-    if (lockedStages[stage]) {
-      setLockedStages(prev => { const next = { ...prev }; delete next[stage]; return next; });
-      setLockedOdds(prev => { const next = { ...prev }; delete next[stage]; return next; });
-    } else {
-      setLockedStages(prev => ({ ...prev, [stage]: true }));
-      setLockedOdds(prev => ({ ...prev, [stage]: stageOdds[stage].adjustedOdds }));
-    }
+    setLockedStages(prev => {
+      if (prev[stage]) {
+        const next = { ...prev };
+        delete next[stage];
+        return next;
+      }
+      return { ...prev, [stage]: true };
+    });
   };
 
   return (
@@ -369,7 +374,7 @@ const WorldCupTicketSimulator = () => {
       <div className="max-w-7xl mx-auto">
         <div className="bg-white rounded-xl shadow-2xl p-8 mb-8">
           <h1 className="text-4xl font-bold text-indigo-900 mb-2">World Cup Ticket Investment Simulator</h1>
-          <p className="text-gray-600 mb-6">Model the profit/loss of buying FIFA World Cup Final tickets across 6 scenarios</p>
+          <p className="text-gray-600 mb-6">Model the profit/loss of buying FIFA World Cup Final tickets across all remaining outcomes</p>
 
           {/* Dashboard Summary */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
@@ -443,23 +448,29 @@ const WorldCupTicketSimulator = () => {
                       const isHedgeable = STAGES.includes(key);
                       const isFinalsGroup = key === 'RunnerUp' || key === 'Winner';
                       const isLocked = isHedgeable && lockedStages[key];
-                      const effectiveOdds = isHedgeable ? (isLocked ? lockedOdds[key] : stageOdds[key].adjustedOdds) : null;
                       return (
                         <tr key={key} className={`border-b border-amber-100 ${isFinalsGroup ? 'bg-green-50' : ''} ${isLocked ? 'bg-amber-100/50' : ''}`}>
-                          <td className="py-2 px-2 font-medium">{OUTCOME_LABELS[key]}</td>
-                          <td className="py-2 px-2 text-right">
-                            <input
-                              type="number"
-                              step={oddsFormat === 'decimal' ? '0.01' : '10'}
-                              value={getDisplayOdds(key)}
-                              onChange={(e) => updateOdds(key, e.target.value)}
-                              onBlur={() => commitOdds(key)}
-                              className="w-24 px-2 py-1 border border-gray-300 rounded text-right focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                            />
+                          <td className="py-2 px-2 font-medium">
+                            {OUTCOME_LABELS[key]}
+                            {isLocked && <span className="ml-2 text-xs font-normal text-amber-700">(resolved — sunk)</span>}
                           </td>
-                          <td className="py-2 px-2 text-right text-gray-600">{oddsData.fairProbs[key].toFixed(1)}%</td>
+                          <td className="py-2 px-2 text-right">
+                            {isLocked ? (
+                              <span className="text-gray-400">-</span>
+                            ) : (
+                              <input
+                                type="number"
+                                step={oddsFormat === 'decimal' ? '0.01' : '10'}
+                                value={getDisplayOdds(key)}
+                                onChange={(e) => updateOdds(key, e.target.value)}
+                                onBlur={() => commitOdds(key)}
+                                className="w-24 px-2 py-1 border border-gray-300 rounded text-right focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                              />
+                            )}
+                          </td>
+                          <td className="py-2 px-2 text-right text-gray-600">{isLocked ? '-' : `${oddsData.fairProbs[key].toFixed(1)}%`}</td>
                           <td className="py-2 px-2 text-right font-semibold text-amber-700">
-                            {isHedgeable ? (effectiveOdds === Infinity ? '-' : effectiveOdds.toFixed(2)) : '-'}
+                            {isHedgeable && !isLocked ? (stageOdds[key].adjustedOdds === Infinity ? '-' : stageOdds[key].adjustedOdds.toFixed(2)) : '-'}
                           </td>
                           <td className="py-2 px-2 text-right">
                             {isHedgeable ? (
@@ -475,8 +486,12 @@ const WorldCupTicketSimulator = () => {
                               <span className="text-gray-400">-</span>
                             )}
                           </td>
-                          <td className="py-2 px-2 text-right font-semibold text-green-600">
-                            {isHedgeable ? formatCurrency(hedgeStakes[key] * (effectiveOdds - 1)) : '-'}
+                          <td className="py-2 px-2 text-right font-semibold">
+                            {!isHedgeable ? '-' : isLocked ? (
+                              <span className="text-red-600">-{formatCurrency(hedgeStakes[key])}</span>
+                            ) : (
+                              <span className="text-green-600">{formatCurrency(hedgeStakes[key] * (stageOdds[key].adjustedOdds - 1))}</span>
+                            )}
                           </td>
                           <td className="py-2 px-2 text-center">
                             {isHedgeable ? (
@@ -485,7 +500,7 @@ const WorldCupTicketSimulator = () => {
                                 checked={!!isLocked}
                                 onChange={() => toggleLock(key)}
                                 className="w-4 h-4 accent-amber-600"
-                                title={isLocked ? 'Unlock to include in Perfect Hedge' : 'Lock to exclude this already-placed bet from Perfect Hedge'}
+                                title={isLocked ? 'Unlock to make this stage live again' : 'Lock once this bet has actually been placed — removes it as a future possibility and counts it as a sunk cost'}
                               />
                             ) : (
                               <span className="text-gray-400">-</span>
@@ -529,7 +544,7 @@ const WorldCupTicketSimulator = () => {
 
           {/* 6-Scenario P&L Table */}
           <div className="mb-8">
-            <h3 className="text-xl font-bold text-gray-800 mb-4">Scenario Analysis (6 Outcomes)</h3>
+            <h3 className="text-xl font-bold text-gray-800 mb-4">Scenario Analysis ({scenarios.length} Remaining Outcomes)</h3>
             <div className="overflow-x-auto">
               <table className="w-full text-sm border-collapse">
                 <thead>
@@ -689,7 +704,7 @@ const WorldCupTicketSimulator = () => {
         {/* Footer */}
         <div className="text-center text-gray-600 text-sm">
           <p>All calculations assume no taxes. IRR computed via Newton-Raphson on actual cash flows.</p>
-          <p className="mt-2">EV = sum of P(scenario) × Net P&L(scenario) across all 6 outcomes.</p>
+          <p className="mt-2">EV = sum of P(scenario) × Net P&L(scenario) across all remaining outcomes. Locked stages are resolved facts (sunk cost, 0% probability), excluded from the scenario set.</p>
         </div>
       </div>
     </div>
